@@ -38,5 +38,48 @@ const createUser = asyncHandler(async (req, res) => {
   }
 });
 
+// Authentication - Login
+const loginUser = asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
+  const existingUser = await User.findOne({ email });
+
+  if (!email || !password) {
+    throw new Error("Please fill in all the inputs");
+  }
+
+  if (existingUser) {
+    // Compare user password with user in DB password
+    const isPasswordValid = await brcypt.compare(
+      password,
+      existingUser.password
+    );
+    if (isPasswordValid) {
+      // Set cookie into the header
+      createToken(res, existingUser._id);
+
+      res.status(201).json({
+        _id: existingUser._id,
+        username: existingUser.username,
+        email: existingUser.email,
+        password: existingUser.password,
+        isAdmin: existingUser.admin,
+      });
+      // Exit the function after sending the response
+      return;
+    } else {
+      throw new Error("Incorrect user credentials entered");
+    }
+  }
+});
+
+// Authentication - Logout
+const logoutUser = asyncHandler(async (req, res) => {
+  res.cookie("jwt", "", {
+    httpOnly: true,
+    expires: new Date(0),
+  });
+  res.status(200).json({ message: "Logged out succesfully" });
+});
+
 // Export Controllers
-export { createUser };
+export { createUser, loginUser, logoutUser };
